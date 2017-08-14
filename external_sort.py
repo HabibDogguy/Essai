@@ -1,11 +1,12 @@
 import unittest
 import random
+from functools import reduce
 
 def sort_segments(input_numbers, params):
     dataset_size = params['dataset_size']
     segment_size = params['segment_size']
     segment_count = dataset_size // segment_size
-    for i in xrange(segment_count):
+    for i in range(segment_count):
         l = input_numbers[i * segment_size : (i + 1) * segment_size]
         l.sort()
         input_numbers[i * segment_size : (i + 1) * segment_size] = l
@@ -18,25 +19,32 @@ def merge(input_numbers, output_numbers, params):
 
     # Init memory
     memory = []
-    for i in xrange(segment_count):
+    for i in range(segment_count):
         segment_start = i * segment_size
         memory += input_numbers[segment_start : segment_start + chunk_size]
-    memory += [0 for i in xrange(segment_count * chunk_size)]
-    chunk_offsets = [0 for i in xrange(segment_count)]
-    chunk_indexes = [0 for i in xrange(segment_count)]
+    chunk_offsets = [0 for i in range(segment_count)]
+    chunk_indexes = [0 for i in range(segment_count)]
 
     # while all the segments are not emptied of their content
-    while any(chunk_indexes[s] < chunk_size for s in xrange(segment_count)):
+    while any(chunk_indexes[s] < chunk_size for s in range(segment_count)):
         # find a non-empty segment
-        segment = next(s for s in xrange(segment_count) if chunk_indexes[s] < chunk_size)
+        segment = next(s for s in range(segment_count) if chunk_indexes[s] < chunk_size)
         # find the non-empty segment with the smallest element
-        for i in xrange(segment + 1, segment_count):
+        for i in range(segment + 1, segment_count):
             if chunk_indexes[i] < chunk_size:
                 if memory[chunk_size * segment + chunk_indexes[segment]] >= memory[chunk_size * i + chunk_indexes[i]]:
                     segment = i
 
         output_numbers.append(memory[chunk_size * segment + chunk_indexes[segment]])
         chunk_indexes[segment] += 1
+
+        if chunk_indexes[segment] == chunk_size:
+            chunk_offsets[segment] += chunk_size
+            if chunk_offsets[segment] < segment_size:
+                memory_chunk_start = segment * chunk_size
+                input_chunk_start = segment_size * segment + chunk_offsets[segment]
+                memory[memory_chunk_start : memory_chunk_start + chunk_size] = input_numbers[input_chunk_start : input_chunk_start + chunk_size]
+                chunk_indexes[segment]=0
 
 def external_sort(input_numbers, output_numbers, params):
     sort_segments(input_numbers, params)
@@ -59,10 +67,18 @@ class TestExternalSort(unittest.TestCase):
                                             'chunk_size': 2})
         self.assertEqual([1, 2, 3, 4], output_numbers)
 
+
+    def test_merge_add_data_when_chunk_exhausted(self):
+        output_numbers = []
+        merge([1, 2, 4, 9, 1, 2, 3, 8], output_numbers, {'dataset_size': 8,
+                                            'segment_size': 4,
+                                            'chunk_size': 1})
+        self.assertEqual([1, 1, 2, 2, 3, 4, 8, 9], output_numbers)
+
     def test_acceptance(self):
         dataset_size = 1000000
         segment_size = 100000
-        input_numbers = [random.randrange(0, 65536) for i in xrange(dataset_size)]
+        input_numbers = [random.randrange(0, 65536) for i in range(dataset_size)]
         output_numbers = []
 
         external_sort(input_numbers, output_numbers, {
@@ -71,7 +87,7 @@ class TestExternalSort(unittest.TestCase):
             'chunk_size': 5000
         })
 
-        for i in xrange(len(output_numbers) - 1):
+        for i in range(len(output_numbers) - 1):
             self.assertTrue(output_numbers[i] <= output_numbers[i + 1])
         self.assertEqual(len(output_numbers), len(input_numbers))
 
