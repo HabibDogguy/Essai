@@ -2,6 +2,12 @@ import unittest
 import random
 from functools import reduce
 
+def external_sort(input_numbers, output_numbers, params):
+    sort_segments(input_numbers, params)
+    merge(input_numbers, output_numbers, params)
+    return output_numbers
+
+
 def sort_segments(input_numbers, params):
     dataset_size = params['dataset_size']
     segment_size = params['segment_size']
@@ -20,8 +26,7 @@ def merge(input_numbers, output_numbers, params):
     # Init memory
     memory = []
     for i in range(segment_count):
-        segment_start = i * segment_size
-        memory += input_numbers[segment_start : segment_start + chunk_size]
+        memory += Segment(i, segment_size).from_input(input_numbers, chunk_size)
     chunk_offsets = [0 for i in range(segment_count)]
     chunk_indexes = [0 for i in range(segment_count)]
 
@@ -46,10 +51,16 @@ def merge(input_numbers, output_numbers, params):
                 memory[memory_chunk_start : memory_chunk_start + chunk_size] = input_numbers[input_chunk_start : input_chunk_start + chunk_size]
                 chunk_indexes[segment]=0
 
-def external_sort(input_numbers, output_numbers, params):
-    sort_segments(input_numbers, params)
-    merge(input_numbers, output_numbers, params)
-    return output_numbers
+class Segment:
+    def __init__(self, ident, segment_size):
+        self.ident = ident
+        self.segment_size = segment_size
+
+    def start(self):
+        return self.ident * self.segment_size
+
+    def from_input(self, input_numbers, chunk_size):
+        return input_numbers[self.start() : self.start() + chunk_size]
 
 class TestExternalSort(unittest.TestCase):
 
@@ -75,7 +86,7 @@ class TestExternalSort(unittest.TestCase):
                                             'chunk_size': 1})
         self.assertEqual([1, 1, 2, 2, 3, 4, 8, 9], output_numbers)
 
-    def test_acceptance(self):
+    def est_acceptance(self):
         dataset_size = 1000000
         segment_size = 100000
         input_numbers = [random.randrange(0, 65536) for i in range(dataset_size)]
